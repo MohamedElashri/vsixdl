@@ -9,19 +9,19 @@ To install the CLI version of VSIXDL:
 ```bash
 git clone https://github.com/MohamedElashri/vsixdl
 cd vsixdl/cli
+pip install -r requirements.txt
 ```
 
 ### Dependencies
 
-The CLI tool has minimal dependencies:
-- Python 3
+The CLI tool requires:
+- Python 3.7+
 - requests
 - colorama
+- aiohttp
+- asyncio
 
-Install them using:
-```bash
-pip install requests colorama
-```
+All dependencies are listed in `requirements.txt` and can be installed automatically using the command above.
 
 ### Optional: Add to PATH
 
@@ -53,7 +53,27 @@ Available Versions:
 ...
 ```
 
-### 2. Download Latest Version
+### 2. List Supported Platforms
+
+To see all supported platforms for a specific version:
+
+```bash
+python vsixdl.py download --id ms-toolsai.jupyter --version 2025.1.2025012301 --list-platforms
+```
+
+Example output:
+```
+Fetching supported platforms...
+
+Supported Platforms:
+- win32-x86_64
+- win32-arm64
+- linux-x86_64
+- darwin-arm64
+- universal
+```
+
+### 3. Download Latest Version
 
 To download the most recent version:
 
@@ -61,13 +81,39 @@ To download the most recent version:
 python vsixdl.py download --id ms-toolsai.jupyter
 ```
 
-### 3. Download Specific Version
+### 4. Download for Specific Platform
 
-To download a particular version:
+To download a version for a specific platform:
 
 ```bash
-python vsixdl.py download --id ms-toolsai.jupyter --version 2023.8.1002501831
+python vsixdl.py download --id ms-toolsai.jupyter --platform linux-x86_64
 ```
+
+### 5. Download Specific Version and Platform
+
+To download a particular version for a specific platform:
+
+```bash
+python vsixdl.py download --id ms-toolsai.jupyter --version 2025.1.2025012301 --platform win32-x86_64
+```
+
+## Supported Platforms
+
+The CLI supports the following platform combinations:
+
+- Windows (win32):
+  - x86_64
+  - arm64
+  - ia32
+- Linux:
+  - x86_64
+  - arm64
+  - armhf
+- macOS (darwin):
+  - x86_64
+  - arm64
+- Web
+- Universal (platform-independent)
 
 ## Input Formats
 
@@ -90,6 +136,16 @@ The CLI provides clear error messages for common issues:
 - Invalid input format:
   ```
   Invalid extension ID or URL format. Use 'publisher.extension' or full URL.
+  ```
+
+- Invalid platform format:
+  ```
+  Invalid platform format. Use one of: win32-x86_64, win32-arm64, linux-x86_64, darwin-arm64, web, universal
+  ```
+
+- Platform not supported:
+  ```
+  No supported platforms found for this version.
   ```
 
 - Connection issues:
