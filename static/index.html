@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VSCode Extension Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        windows: {
+                            light: '#00a4ef',
+                            dark: '#0078d4'
+                        },
+                        macos: {
+                            light: '#999999',
+                            dark: '#666666'
+                        },
+                        linux: {
+                            light: '#ff6c37',
+                            dark: '#e65d2e'
+                        },
+                        web: {
+                            light: '#4CAF50',
+                            dark: '#388E3C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            @apply transition-all duration-300;
+        }
+        .light .gradient-bg {
+            background: linear-gradient(135deg, #f6f8fc 0%, #e9edf5 100%);
+        }
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        }
+        .card-shadow {
+            @apply transition-all duration-300;
+        }
+        .light .card-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .dark .card-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .version-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .version-item:hover {
+            transform: translateX(4px);
+        }
+        .download-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .download-btn:hover {
+            transform: scale(1.05);
+        }
+        .input-focus-ring {
+            transition: all 0.2s ease-in-out;
+        }
+        .input-focus-ring:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Theme Toggle -->
+    <div class="fixed top-4 right-4">
+        <button onclick="toggleTheme()" 
+                class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200">
+            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5 text-gray-100" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div class="w-full max-w-xl space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">VSCode Extension Downloader</h1>
+            <p class="text-gray-600 dark:text-gray-400">Download any version of VSCode extensions directly from the marketplace</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-8">
+            <div class="space-y-6">
+                <!-- Input Section -->
+                <div>
+                    <label for="extensionInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Extension ID or URL
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               id="extensionInput" 
+                               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg input-focus-ring bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                               placeholder="e.g., ms-python.python or marketplace URL">
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Enter either the extension ID (publisher.extension) or the full marketplace URL</p>
+                </div>
+
+                <!-- Version Limit Control -->
+                <div>
+                    <label for="versionLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Number of Versions
+                    </label>
+                    <select id="versionLimit" 
+                            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg input-focus-ring bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <option value="5">Latest 5 versions</option>
+                        <option value="10">Latest 10 versions</option>
+                        <option value="20">Latest 20 versions</option>
+                        <option value="-1">All versions</option>
+                    </select>
+                </div>
+
+                <!-- Fetch Button -->
+                <button onclick="fetchVersions()" 
+                        class="w-full bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
+                               transition-all duration-200 font-medium">
+                    Fetch Versions
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden">
+            <div class="flex justify-center items-center space-x-3 bg-white dark:bg-gray-800 rounded-lg card-shadow p-4">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-500"></div>
+                <span class="text-gray-600 dark:text-gray-400 font-medium">Fetching versions...</span>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden">
+            <div class="bg-red-50 dark:bg-red-900 border-l-4 border-red-500 dark:border-red-900 p-4 rounded-lg card-shadow">
+                <div class="flex">
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700 dark:text-red-500"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Versions Container -->
+        <div id="versionsContainer" class="hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-8">
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-6">Available Versions</h2>
+                <div id="versionsList" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api/versions';
+        
+        // Platform definitions
+        const platforms = {
+            win32: {
+                os: 'Windows',
+                architectures: ['x86_64', 'arm64', 'ia32']
+            },
+            linux: {
+                os: 'Linux',
+                architectures: ['x86_64', 'arm64', 'armhf']
+            },
+            darwin: {
+                os: 'macOS',
+                architectures: ['x86_64', 'arm64']
+            },
+            web: {
+                os: 'Web',
+                architectures: ['web']
+            }
+        };
+
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const errorMessage = errorDiv.querySelector('p');
+            errorMessage.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        function parseInput(input) {
+            const urlMatch = input.match(/itemName=([^.]+)\.(.+)/);
+            const idMatch = input.match(/^([^.]+)\.(.+)/);
+            
+            if (urlMatch) return { publisher: urlMatch[1], extension: urlMatch[2] };
+            if (idMatch) return { publisher: idMatch[1], extension: idMatch[2] };
+            return null;
+        }
+
+        async function fetchVersions() {
+            const input = document.getElementById('extensionInput').value.trim();
+            const maxVersions = parseInt(document.getElementById('versionLimit').value);
+            const parsedInput = parseInput(input);
+            
+            if (!parsedInput) {
+                showError('Invalid input format. Please use publisher.extension or full marketplace URL.');
+                return;
+            }
+
+            hideError();
+            showLoading(true);
+            document.getElementById('versionsContainer').classList.add('hidden');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filters: [{
+                            criteria: [
+                                { filterType: 7, value: `${parsedInput.publisher}.${parsedInput.extension}` }
+                            ],
+                            pageNumber: 1,
+                            pageSize: 50,
+                            sortBy: 0,
+                            sortOrder: 0
+                        }],
+                        assetTypes: [],
+                        flags: 950,
+                        max_versions: maxVersions
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch versions. Please check the extension ID and try again.');
+                }
+
+                const data = await response.json();
+                if (!data.results || !data.results[0] || !data.results[0].extensions || !data.results[0].extensions[0]) {
+                    throw new Error('Extension not found. Please check the extension ID and try again.');
+                }
+                
+                const extension = data.results[0].extensions[0];
+                const versions = extension.versions;
+                const totalVersions = extension.totalVersionCount;
+                
+                displayVersions(versions, parsedInput);
+                
+                // Add version count information
+                const countInfo = document.createElement('div');
+                countInfo.className = 'text-sm text-gray-600 dark:text-gray-400 mb-4';
+                countInfo.textContent = `Showing ${versions.length} of ${totalVersions} versions`;
+                document.getElementById('versionsList').insertBefore(countInfo, document.getElementById('versionsList').firstChild);
+            } catch (error) {
+                showError(error.message || 'Failed to fetch versions. Please check the extension ID and try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayVersions(versions, parsedInput) {
+            const container = document.getElementById('versionsContainer');
+            const list = document.getElementById('versionsList');
+            list.innerHTML = '';
+
+            versions.forEach(version => {
+                const versionDiv = document.createElement('div');
+                versionDiv.className = 'version-item bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600';
+
+                // Check if the version has platform-specific builds
+                const platforms = version.supportedPlatforms;
+                const isUniversal = platforms && platforms.universal === true;
+
+                // Add version header with type indicator
+                const header = document.createElement('div');
+                header.className = 'flex items-center justify-between mb-2';
+                
+                const versionInfo = document.createElement('div');
+                versionInfo.className = 'flex items-center gap-2';
+                
+                const versionNumber = document.createElement('span');
+                versionNumber.className = 'font-semibold text-gray-800 dark:text-gray-100';
+                versionNumber.textContent = version.version;
+                
+                const typeIndicator = document.createElement('span');
+                typeIndicator.className = `px-2 py-1 rounded text-xs font-medium ${isUniversal ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100'}`;
+                typeIndicator.textContent = isUniversal ? 'Universal' : 'Platform Specific';
+                
+                versionInfo.appendChild(versionNumber);
+                versionInfo.appendChild(typeIndicator);
+                header.appendChild(versionInfo);
+                
+                versionDiv.appendChild(header);
+
+                // Add download options
+                if (isUniversal) {
+                    const downloadBtn = createDownloadButton(parsedInput, version.version);
+                    versionDiv.appendChild(downloadBtn);
+                } else if (platforms) {
+                    const platformsDiv = document.createElement('div');
+                    platformsDiv.className = 'mt-3 space-y-4';
+                    
+                    // Group by OS type with their respective colors
+                    const osGroups = {
+                        win32: { 
+                            name: 'Windows', 
+                            architectures: [],
+                            colorClass: 'text-windows-light dark:text-windows-dark hover:bg-windows-light/10 dark:hover:bg-windows-dark/10 border-windows-light dark:border-windows-dark'
+                        },
+                        darwin: { 
+                            name: 'macOS', 
+                            architectures: [],
+                            colorClass: 'text-macos-light dark:text-macos-dark hover:bg-macos-light/10 dark:hover:bg-macos-dark/10 border-macos-light dark:border-macos-dark'
+                        },
+                        linux: { 
+                            name: 'Linux', 
+                            architectures: [],
+                            colorClass: 'text-linux-light dark:text-linux-dark hover:bg-linux-light/10 dark:hover:bg-linux-dark/10 border-linux-light dark:border-linux-dark'
+                        },
+                        web: { 
+                            name: 'Web', 
+                            architectures: [],
+                            colorClass: 'text-web-light dark:text-web-dark hover:bg-web-light/10 dark:hover:bg-web-dark/10 border-web-light dark:border-web-dark'
+                        }
+                    };
+                    
+                    // Collect architectures for each OS
+                    Object.entries(platforms).forEach(([platform, architectures]) => {
+                        if (platform !== 'universal' && osGroups[platform]) {
+                            osGroups[platform].architectures = architectures;
+                        }
+                    });
+                    
+                    // Create sections for each OS that has architectures
+                    Object.entries(osGroups).forEach(([platform, info]) => {
+                        if (info.architectures.length > 0) {
+                            // Create OS section
+                            const osSection = document.createElement('div');
+                            osSection.className = 'space-y-2';
+                            
+                            // Add OS header
+                            const osHeader = document.createElement('div');
+                            osHeader.className = `text-sm font-medium ${info.colorClass} mb-2`;
+                            osHeader.textContent = info.name;
+                            osSection.appendChild(osHeader);
+                            
+                            // Create grid for download buttons
+                            const buttonGrid = document.createElement('div');
+                            buttonGrid.className = 'grid grid-cols-2 gap-2';
+                            
+                            // Sort architectures to ensure consistent order (x64/x86_64 first)
+                            const sortedArchs = [...info.architectures].sort((a, b) => {
+                                if (a === 'x86_64' || a === 'x64') return -1;
+                                if (b === 'x86_64' || b === 'x64') return 1;
+                                return a.localeCompare(b);
+                            });
+                            
+                            // Add download buttons
+                            sortedArchs.forEach(arch => {
+                                const downloadBtn = createDownloadButton(parsedInput, version.version, platform, arch);
+                                downloadBtn.className = `download-btn bg-white dark:bg-gray-800 border ${info.colorClass} px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200`;
+                                buttonGrid.appendChild(downloadBtn);
+                            });
+                            
+                            osSection.appendChild(buttonGrid);
+                            platformsDiv.appendChild(osSection);
+                        }
+                    });
+                    
+                    versionDiv.appendChild(platformsDiv);
+                }
+
+                list.appendChild(versionDiv);
+            });
+
+            container.classList.remove('hidden');
+        }
+
+        function createDownloadButton(parsedInput, version, platform = null, architecture = null) {
+            const btn = document.createElement('button');
+            btn.className = 'download-btn bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 w-full';
+            
+            let url = `https://marketplace.visualstudio.com/_apis/public/gallery/publishers/${parsedInput.publisher}/vsextensions/${parsedInput.extension}/${version}/vspackage`;
+            
+            if (platform && architecture) {
+                const platformStr = platform === 'web' ? 'web' : `${platform}-${architecture}`;
+                url += `?targetPlatform=${platformStr}`;
+                const archLabel = architecture.replace('x86_64', 'x64').replace('x86', '32-bit');
+                btn.textContent = archLabel;
+            } else {
+                btn.textContent = 'Universal Build';
+            }
+            
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = url;
+            });
+            
+            return btn;
+        }
+
+        // Theme handling
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-toggle-dark-icon').classList.add('hidden');
+                document.getElementById('theme-toggle-light-icon').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-toggle-light-icon').classList.add('hidden');
+                document.getElementById('theme-toggle-dark-icon').classList.remove('hidden');
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
+        }
+
+        // Set initial theme
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            setTheme('dark');
+        } else {
+            setTheme('light');
+        }
+
+        // Add enter key support
+        document.getElementById('extensionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                fetchVersions();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+werkzeug>=3.0.1
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
+aiohttp>=3.9.1
