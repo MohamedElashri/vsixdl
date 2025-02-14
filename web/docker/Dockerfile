@@ -9,7 +9,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY . .
+COPY server.py .
+COPY static ./static
 
 EXPOSE 5000
 

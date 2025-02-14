@@ -38,7 +38,11 @@ cp example.env .env
 
 4. Build and run with Docker Compose:
 ```bash
+# From the web/docker directory
 docker compose up -d
+
+# Or from the web directory
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 The application will be available at `http://localhost:5000`
