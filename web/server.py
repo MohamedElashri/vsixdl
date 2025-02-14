@@ -1,22 +1,64 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import requests
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
+from dotenv import load_dotenv
+import requests
 import asyncio
 import aiohttp
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
+
+# Disable SSL
+app.config.update(
+    SESSION_COOKIE_SECURE=False,
+    PREFERRED_URL_SCHEME='http'
+)
+
+# Basic security setup
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-for-testing')
+
+# Simple CORS setup
 CORS(app)
 
+# Initialize rate limiter with reasonable limits for VS Code marketplace
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day"],  # Default limit
+    storage_uri="memory://"
+)
+
 MARKETPLACE_API = 'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery'
+
+# Input validation decorator
+def validate_json_input(required_fields):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not request.is_json:
+                return jsonify({"error": "Content-Type must be application/json"}), 400
+            
+            data = request.get_json()
+            if not all(field in data for field in required_fields):
+                return jsonify({"error": f"Missing required fields: {required_fields}"}), 400
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 async def check_platform_support(session, publisher, extension, version, platform):
     # First try with the full platform string
     url = f'https://marketplace.visualstudio.com/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
     if platform != 'universal':
         url += f'?targetPlatform={platform}'
-    
+
     print(f"Checking URL: {url}")  # Debug log
     try:
         async with session.get(url, allow_redirects=True) as response:
@@ -40,7 +82,7 @@ async def get_supported_platforms(publisher, extension, version):
         'darwin': ['x86_64', 'arm64'],
         'web': ['web']
     }
-    
+
     # First check all platforms to see what's available
     supported = {}
     async with aiohttp.ClientSession() as session:
@@ -52,9 +94,9 @@ async def get_supported_platforms(publisher, extension, version):
                 if os_name == 'web':
                     platform = 'web'
                 tasks.append(check_platform_support(session, publisher, extension, version, platform))
-        
+
         results = await asyncio.gather(*tasks)
-        
+
         # Process platform-specific results
         has_platform_specific = False
         for platform, is_supported in results:
@@ -66,7 +108,7 @@ async def get_supported_platforms(publisher, extension, version):
                     supported[os_name] = []
                 if arch not in supported[os_name]:
                     supported[os_name].append(arch)
-        
+
         # Only check for universal if no platform-specific versions were found
         if not has_platform_specific:
             url = f'https://marketplace.visualstudio.com/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
@@ -77,7 +119,7 @@ async def get_supported_platforms(publisher, extension, version):
                         return {'universal': True}
             except Exception as e:
                 print(f"Error checking universal: {str(e)}")
-    
+
     print(f"Supported platforms for {publisher}.{extension} v{version}: {supported}")
     return supported
 
@@ -86,12 +128,17 @@ def root():
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/versions', methods=['POST'])
+@limiter.limit("30 per minute")  # Specific limit for VS Code marketplace API
+@validate_json_input(['filters'])
 def get_versions():
     try:
         request_data = request.json
-        # Get the max_versions parameter from the request, default to 5
-        max_versions = request_data.get('max_versions', 5)
+        max_versions = min(request_data.get('max_versions', 5), 20)  # Limit max_versions to 20
         
+        # Validate request size
+        if len(str(request_data)) > 1024 * 1024:  # 1MB limit for request payload
+            return jsonify({"error": "Request payload too large"}), 413
+
         response = requests.post(
             MARKETPLACE_API,
             headers={
@@ -99,44 +146,69 @@ def get_versions():
                 'Accept': 'application/json;api-version=7.1-preview.1',
                 'User-Agent': 'Mozilla/5.0'
             },
-            json=request_data
+            json=request_data,
+            timeout=10  # Add timeout
         )
-        response.raise_for_status()
-        data = response.json()
         
+        if response.status_code != 200:
+            return jsonify({"error": "Marketplace API error"}), response.status_code
+            
+        data = response.json()
+
         if not data['results'] or not data['results'][0]['extensions']:
             return jsonify({'error': 'Extension not found'}), 404
-            
+
         extension_data = data['results'][0]['extensions'][0]
-        publisher = extension_data['publisher']['publisherName']  
-        extension_id = extension_data['extensionName']  
-        
-        print(f"Checking platforms for {publisher}.{extension_id}")  
+        publisher = extension_data['publisher']['publisherName']
+        extension_id = extension_data['extensionName']
+
+        print(f"Checking platforms for {publisher}.{extension_id}")
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
+
         # Limit versions if max_versions is not -1 (all versions)
         versions_to_process = extension_data['versions']
         if max_versions != -1:
             versions_to_process = versions_to_process[:max_versions]
-            
+
         for version in versions_to_process:
             supported_platforms = loop.run_until_complete(
                 get_supported_platforms(publisher, extension_id, version['version'])
             )
             version['supportedPlatforms'] = supported_platforms
-            print(f"Version {version['version']} supported platforms: {supported_platforms}")  
+            print(f"Version {version['version']} supported platforms: {supported_platforms}")
 
         loop.close()
-        
+
         # Add total version count to response
         data['results'][0]['extensions'][0]['totalVersionCount'] = len(extension_data['versions'])
         data['results'][0]['extensions'][0]['versions'] = versions_to_process
-        
+
         return jsonify(data)
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': str(e)}), 500
+    except requests.Timeout:
+        return jsonify({"error": "Request timeout"}), 408
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Error handler for rate limiting
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        "error": "Rate limit exceeded",
+        "description": str(e.description),
+        "retry_after": e.description.retry_after
+    }), 429
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    host = os.getenv('FLASK_RUN_HOST', '0.0.0.0')
+    port = int(os.getenv('FLASK_RUN_PORT', 5000))
+    debug = os.getenv('FLASK_DEBUG', '0') == '1'
+    
+    app.run(
+        host=host,
+        port=port,
+        debug=debug,
+        ssl_context=None,
+        use_reloader=debug
+    )

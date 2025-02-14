@@ -6,17 +6,49 @@ VSIXDL is a powerful tool that helps you download VSCode extensions (`.vsix` fil
 
 Microsoft recently removed direct download links for VS Code extensions from the Marketplace, making it harder to download `.vsix` files for offline installation. This tool is particularly useful if you:
 - Work on restricted machines without direct access to the VS Code Marketplace
-- Use VS Code forks like VSCodium, Cursor, or other alternatives
-- Need to manage multiple versions of extensions
+- Need to download specific versions of extensions for offline installation
+- Want to manage multiple versions of extensions
+
+## Hosted Version
+
+A demo version of VSIXDL is available at [Demo](https://vsixdl.melashri.net). Please note:
+- This is a demonstration instance with restricted usage limits
+- Users must adhere to Visual Studio Marketplace Terms of Service
+- No guarantees of availability or support are provided
+- For production use, please host your own instance
 
 ## Getting Started
 
-### Web Interface (Recommended)
+### Web Interface
+
+#### Docker Installation (Recommended)
 
 1. Clone the repository:
 ```bash
 git clone https://github.com/MohamedElashri/vsixdl
-cd vsixdl
+cd vsixdl/web
+```
+
+2. Copy the example environment file:
+```bash
+cp example.env .env
+```
+
+3. Edit `.env` file with your settings
+
+4. Build and run with Docker Compose:
+```bash
+docker compose up -d
+```
+
+The application will be available at `http://localhost:5000`
+
+#### Manual Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/MohamedElashri/vsixdl
+cd vsixdl/web
 ```
 
 2. Install dependencies:
@@ -24,12 +56,16 @@ cd vsixdl
 pip install -r requirements.txt
 ```
 
-3. Start the server:
+3. Copy and configure environment:
+```bash
+cp example.env .env
+# Edit .env with your settings
+```
+
+4. Start the server:
 ```bash
 python server.py
 ```
-
-4. Open your browser and navigate to `http://localhost:5000`
 
 ### Usage
 
@@ -39,7 +75,7 @@ python server.py
 
 The application will fetch the list of available versions from the official VS Code marketplace and allow you to download any specific version.
 
-## Alternative: Command Line Interface
+### Command Line Interface
 
 If you prefer working from the terminal, VSIXDL also provides a CLI tool. Check out the [CLI documentation](cli/README.md) for installation and usage instructions.
 
@@ -49,4 +85,4 @@ VSIXDL is released under the **MIT License**. See the [LICENSE](LICENSE) file fo
 
 ## Disclaimer
 
-This tool is not affiliated with or endorsed by Microsoft. Use it responsibly and ensure compliance with the VS Code Marketplace terms of service.
+This tool is provided as-is, without any warranty. Users are responsible for ensuring compliance with Visual Studio Marketplace Terms of Service and any applicable licenses. The hosted demo version is provided for demonstration purposes only and may be subject to rate limiting or other restrictions.
