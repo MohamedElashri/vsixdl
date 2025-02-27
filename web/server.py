@@ -10,7 +10,7 @@ import aiohttp
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
@@ -24,8 +24,19 @@ app.config.update(
 # Basic security setup
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-for-testing')
 
-# Simple CORS setup
-CORS(app)
+# Configure CORS with your domain
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '').split(',')
+if not any(ALLOWED_ORIGINS):  # If no origins specified, don't allow any
+    ALLOWED_ORIGINS = []
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ALLOWED_ORIGINS,
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # Initialize rate limiter with reasonable limits for VS Code marketplace
 limiter = Limiter(
@@ -35,7 +46,7 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-MARKETPLACE_API = 'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery'
+MARKETPLACE_API = os.getenv('MARKETPLACE_API', 'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery')
 
 # Input validation decorator
 def validate_json_input(required_fields):
@@ -55,7 +66,7 @@ def validate_json_input(required_fields):
 
 async def check_platform_support(session, publisher, extension, version, platform):
     # First try with the full platform string
-    url = f'https://marketplace.visualstudio.com/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
+    url = f'{os.getenv("MARKETPLACE_BASE_URL", "https://marketplace.visualstudio.com")}/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
     if platform != 'universal':
         url += f'?targetPlatform={platform}'
 
@@ -66,7 +77,7 @@ async def check_platform_support(session, publisher, extension, version, platfor
             # If it's not found and this is an x86_64 architecture, try without architecture
             if response.status == 404 and platform.endswith('x86_64'):
                 os_name = platform.split('-')[0]
-                base_url = f'https://marketplace.visualstudio.com/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage?targetPlatform={os_name}'
+                base_url = f'{os.getenv("MARKETPLACE_BASE_URL", "https://marketplace.visualstudio.com")}/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage?targetPlatform={os_name}'
                 async with session.get(base_url, allow_redirects=True) as base_response:
                     print(f"Response for {os_name}: {base_response.status}")  # Debug log
                     return platform, base_response.status in [200, 302]
@@ -111,7 +122,7 @@ async def get_supported_platforms(publisher, extension, version):
 
         # Only check for universal if no platform-specific versions were found
         if not has_platform_specific:
-            url = f'https://marketplace.visualstudio.com/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
+            url = f'{os.getenv("MARKETPLACE_BASE_URL", "https://marketplace.visualstudio.com")}/_apis/public/gallery/publishers/{publisher}/vsextensions/{extension}/{version}/vspackage'
             try:
                 async with session.get(url, allow_redirects=True) as response:
                     if response.status in [200, 302]:
