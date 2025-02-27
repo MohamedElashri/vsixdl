@@ -24,19 +24,25 @@ app.config.update(
 # Basic security setup
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-for-testing')
 
-# Configure CORS with your domain
-ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '').split(',')
-if not any(ALLOWED_ORIGINS):  # If no origins specified, don't allow any
-    ALLOWED_ORIGINS = []
-
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ALLOWED_ORIGINS,
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }
-})
+# Configure CORS
+FLASK_ENV = os.getenv('FLASK_ENV', 'production')
+if FLASK_ENV == 'development':
+    # In development, allow all origins
+    CORS(app, supports_credentials=True)
+else:
+    # In production, use configured origins
+    ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '').split(',')
+    if not any(ALLOWED_ORIGINS):  # If no origins specified, don't allow any
+        ALLOWED_ORIGINS = []
+    
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ALLOWED_ORIGINS,
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
 
 # Initialize rate limiter with reasonable limits for VS Code marketplace
 limiter = Limiter(

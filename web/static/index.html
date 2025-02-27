@@ -162,7 +162,8 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api/versions';
+        // Get base API URL from current location
+        const API_URL = `${window.location.protocol}//${window.location.host}/api/versions`;
         
         // Platform definitions
         const platforms = {
